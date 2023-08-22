@@ -2,12 +2,16 @@ use sysinfo::{
     System, 
     SystemExt
 };
-use std::{io, thread, time::Duration};
+use std::{
+    error::Error,
+    io,
+    time::Duration, thread,};
 use ratatui::{
     backend::CrosstermBackend,
     Terminal,
+    layout::{Constraint, Direction, Layout,},
     style,
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, BarChart},
 };
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture},
@@ -41,26 +45,64 @@ fn main() -> Result<(), io::Error> {
 
     // loop and update terminal every 5 seconds, 
     let mut pol = true;
+    let mut sysinfo = System::new_all();
+    let mut bar_chart_data = vec![("B0".to_string(), 0)];
+    let value = |x: String, y: u64| -> String { format!("{}{}", x, y) };
+    
     loop {
-        // update terminal if we are polling
-
         // if we are polling update the terminal
         if pol {
+            sysinfo.refresh_all();
             terminal.draw(|f| {
-                let size = f.size();
+                // How to split area into 2 parts
+                let chunks = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(25), Constraint::Percentage(75)].as_ref())
+                    .split(f.size());
+
                 let block = Block::default()
                 .title("System Information")
                 .borders(Borders::ALL);
+
+                let block2 = Block::default()
+                    .title("Memory Usage Chart")
+                    .style(style::Style::default().bg(style::Color::White))
+                    .borders(Borders::ALL);
+
+                let data = convert_kb_to_gb(sysinfo.used_memory());
+                let v = value("B".to_string(), bar_chart_data.len() as u64).to_string();
+                // add new data to the chart and increment label for &str
+                bar_chart_data.push((v, data as u64));
+                // Some hokey pokey to get the data into the right format
+                let borrowed_data: Vec<(&str, u64)> = bar_chart_data
+                    .iter()
+                    .rev()
+                    .take(10)
+                    .rev()
+                    .map(|(s, num)| (s.as_str(), *num))
+                    .collect();
+
+                let barchart = BarChart::default()
+                    .block(block2)
+                    .data(&borrowed_data)
+                    .max(convert_kb_to_gb(sysinfo.available_memory()) as u64)
+                    .bar_width(9)
+                    .bar_style(style::Style::default().fg(style::Color::Yellow))
+                    .value_style(style::Style::default().fg(style::Color::Black).bg(style::Color::Yellow));
+
                 let para = Paragraph::new(get_sys_info_to_formatted_string())
-                    .style(style::Style::default().fg(style::Color::Red))
+                    .style(style::Style::default().bg(style::Color::White))
                     .block(block);
 
-                f.render_widget(para, size);
-
+                f.render_widget(para, chunks[0]);
+                f.render_widget(barchart, chunks[1]);
             })?;
         }
 
-        // if s is pressed stop polling, if q is pressed quit, if r is pressed start polling again
+        // if s is pressed stop polling, 
+        // if q is pressed quit, 
+        // if r is pressed start polling again
+        // ignore mouse movements
         if event::poll(Duration::from_millis(250)).unwrap() {
             if let event::Event::Key(key) = event::read().unwrap() {
                 match key.code {
@@ -68,14 +110,14 @@ fn main() -> Result<(), io::Error> {
                         pol = false;
                     }
                     event::KeyCode::Char('q') => {
+                        // Exit the program and clear the terminal
                         disable_raw_mode()?;
                         execute!(
                             terminal.backend_mut(),
                             LeaveAlternateScreen,
                             DisableMouseCapture
                         )?;
-                        terminal.show_cursor()?;
-                        std::process::exit(0);
+                        return Ok(());
                     }
                     event::KeyCode::Char('r') => {
                         pol = true;
@@ -85,8 +127,6 @@ fn main() -> Result<(), io::Error> {
             }
         }
     }
-
-    
 }
 
 fn get_sys_info_to_formatted_string() -> String {
