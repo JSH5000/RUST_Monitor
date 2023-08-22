@@ -30,7 +30,7 @@ The goal of this project is simple:
 - For now, since the app is only the `host cli`, just git clone or download this repo.
 - Then, run the command `cargo build` then `cargo run`. (I know the `cargo run` command will do both, I am just paranoid.
 - The shell will then turn into the below image:
-- ![Rust_Mon](https://github.com/JSH5000/RUST_Monitor/assets/39937127/8d765866-ce86-4180-b1a5-e1a8be19e39f)
+  ![Rust_Mon](https://github.com/JSH5000/RUST_Monitor/assets/39937127/8d765866-ce86-4180-b1a5-e1a8be19e39f)
 
 ## Credits
 Using the awesome rust CLI UI library <a href="https://github.com/ratatui-org/ratatui">RATATUI</a>. Check em' out!
