@@ -46,7 +46,8 @@ fn main() -> Result<(), io::Error> {
     // loop and update terminal every 5 seconds, 
     let mut pol = true;
     let mut sysinfo = System::new_all();
-    let mut bar_chart_data = vec![("B0".to_string(), 0)];
+    // New vecotr to hold the data for the bar chart
+    let mut bar_chart_data = Vec::new();
     let value = |x: String, y: u64| -> String { format!("{}{}", x, y) };
     
     loop {
@@ -73,11 +74,12 @@ fn main() -> Result<(), io::Error> {
                 let v = value("B".to_string(), bar_chart_data.len() as u64).to_string();
                 // add new data to the chart and increment label for &str
                 bar_chart_data.push((v, data as u64));
+                let take = ((f.size().width as usize * 75) / 100) / 10;
                 // Some hokey pokey to get the data into the right format
                 let borrowed_data: Vec<(&str, u64)> = bar_chart_data
                     .iter()
                     .rev()
-                    .take(10)
+                    .take(take)
                     .rev()
                     .map(|(s, num)| (s.as_str(), *num))
                     .collect();
